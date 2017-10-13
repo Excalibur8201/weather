@@ -3,9 +3,17 @@ package com.cgg.weather;
 import static java.time.temporal.ChronoUnit.DAYS;
 
 import java.time.LocalDate;
+import java.util.HashSet;
+import java.util.Set;
 
+import org.bson.Document;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+
+import com.mongodb.MongoClient;
+import com.mongodb.MongoClientURI;
+import com.mongodb.client.MongoCollection;
+import com.mongodb.client.MongoDatabase;
 
 @SpringBootApplication
 public class WeatherApplication {
@@ -15,15 +23,25 @@ public class WeatherApplication {
 	}
 
 	private void run() {
+
+		MongoClientURI connectionString = new MongoClientURI(
+				"mongodb://codingpedia:codingpedia@localhost:27017/codingpedia-bookmarks");
+		MongoClient mongoClient = new MongoClient(connectionString);
+
+		MongoDatabase database = mongoClient.getDatabase("codingpedia-bookmarks");
+
+		MongoCollection<Document> planetsPositionsCollection = database.getCollection("planets_positions");
+
 		int alpha1, alpha2, alpha3;
 		double x1, y1, x2, y2, x3, y3, alpha1Radians, alpha2Radians, alpha3Radians, m, b, maxPerimeter = 0;
-		boolean sunAligned = false, pointsAligned = false, triangled = false, sunTriangled = false;
 
 		LocalDate today = LocalDate.now();
 		LocalDate tenYearsLater = today.plusYears(10);
 		long daysBetween = DAYS.between(today, tenYearsLater);
 
-		for (int i = 0; i < daysBetween; i++) {
+		Set<Integer> intenseDaysRains = new HashSet<Integer>();
+
+		for (int i = 1; i <= daysBetween; i++) {
 
 			// The angular positions of planets
 			alpha1 = normalizeAngle(-1 * i + 90);
@@ -46,12 +64,18 @@ public class WeatherApplication {
 			m = (y1 - y2) / (x1 - x2) * x3;
 			b = y1 - ((y1 - y2) / (x1 - x2) * x1);
 
+			Document document = new Document();
+			document.append("dia", i);
+
 			if (b == 0) {
-				sunAligned = true;
-				pointsAligned = true;
+
+				document.append("clima", DayWeather.SEQUIA.name());
 			} else if ((m + b) == y3) {
-				pointsAligned = true;
+
+				document.append("clima", DayWeather.OPTIMO.name());
+
 			}
+
 			// Non-aligned, triangle
 			else {
 
@@ -68,23 +92,40 @@ public class WeatherApplication {
 							+ Math.sqrt(Math.pow(x3 - x1, 2) + Math.pow(y3 - y1, 2));
 
 					if (perimeter > maxPerimeter) {
+						intenseDaysRains.clear();
+
 						maxPerimeter = perimeter;
+
+						intenseDaysRains.add(i);
 					}
 
-					triangled = true;
-					sunTriangled = true;
+					if (perimeter == maxPerimeter) {
+
+						intenseDaysRains.add(i);
+
+					}
+
+					document.append("clima", DayWeather.LLUVIA.name());
+
 				}
+
 				// Triangle with no Sun
 				else {
-					triangled = true;
+
+					document.append("clima", DayWeather.NORMAL.name());
 				}
 
 			}
 
-			sunAligned = false;
-			pointsAligned = false;
-			triangled = false;
-			sunTriangled = false;
+			planetsPositionsCollection.insertOne(document);
+
+		}
+
+		for (Integer day : intenseDaysRains) {
+			planetsPositionsCollection.updateMany(arg0, arg1)(eq("dia", day), new Document("$set", new Document("i", 110)));
+			
+			"grades" : [ 80, 85, 90 ] ,
+			  {"multi": true}
 		}
 	}
 
@@ -99,16 +140,26 @@ public class WeatherApplication {
 		FOURTH
 	}
 
+	public enum DayWeather {
+
+		NORMAL,
+
+		OPTIMO,
+
+		SEQUIA,
+
+		LLUVIA,
+
+		LLUVIA_INTENSA
+
+	}
+
 	private int normalizeAngle(int angle) {
-		if (angle <= -360) {
-			while (angle <= -360) {
-				angle += 360;
-			}
+		while (angle <= -360) {
+			angle += 360;
 		}
-		if (angle >= 360) {
-			while (angle >= 360) {
-				angle -= 360;
-			}
+		while (angle >= 360) {
+			angle -= 360;
 		}
 		return angle;
 	}

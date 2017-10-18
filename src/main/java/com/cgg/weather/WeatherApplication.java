@@ -10,6 +10,7 @@ import org.bson.Document;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+import com.mongodb.BasicDBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.MongoClientURI;
 import com.mongodb.client.MongoCollection;
@@ -18,6 +19,7 @@ import com.mongodb.client.MongoDatabase;
 @SpringBootApplication
 public class WeatherApplication {
 
+	
 	public static void main(String[] args) {
 		SpringApplication.run(WeatherApplication.class, args);
 	}
@@ -25,7 +27,7 @@ public class WeatherApplication {
 	private void run() {
 
 		MongoClientURI connectionString = new MongoClientURI(
-				"mongodb://codingpedia:codingpedia@localhost:27017/codingpedia-bookmarks");
+				"mongodb://localhost/test");
 		MongoClient mongoClient = new MongoClient(connectionString);
 
 		MongoDatabase database = mongoClient.getDatabase("codingpedia-bookmarks");
@@ -122,10 +124,13 @@ public class WeatherApplication {
 		}
 
 		for (Integer day : intenseDaysRains) {
-			planetsPositionsCollection.updateMany(arg0, arg1)(eq("dia", day), new Document("$set", new Document("i", 110)));
-			
-			"grades" : [ 80, 85, 90 ] ,
-			  {"multi": true}
+			BasicDBObject updateQuery = new BasicDBObject();
+			updateQuery.append("$set", new BasicDBObject().append("clima", DayWeather.LLUVIA_INTENSA.toString()));
+
+			BasicDBObject searchQuery = new BasicDBObject();
+			searchQuery.append("dia", "day");
+
+			planetsPositionsCollection.updateMany(searchQuery, updateQuery);
 		}
 	}
 
